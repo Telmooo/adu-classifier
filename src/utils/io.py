@@ -53,6 +53,7 @@ def read_excel(filename : str, directory : Optional[str] = './', **kwargs) -> pd
     Returns:
         pd.DataFrame: Resulting Pandas DataFrame from the file. 
     """
+    return pd.read_excel(Path(directory, filename), **kwargs)
 
 """Plot I/O
 
