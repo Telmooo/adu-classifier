@@ -69,6 +69,7 @@ def save_figure(figure : figure.Figure, filename : str, directory : Optional[str
         directory (Optional[str], optional): Name of directory where file is going to be stored. Defaults to './'.
         kwargs: Other keyword arguments are passed to [`matplotlib.figure.Figure.savefig`](https://matplotlib.org/stable/api/figure_api.html?highlight=savefig#matplotlib.figure.Figure.savefig).
     """
+    os.makedirs(directory, exist_ok=True)
     figure.savefig(Path(directory, filename), **kwargs)
 
 def save_wordcloud(wordcloud : WordCloud, filename : str, directory : Optional[str] = './', to_svg : bool = False) -> None:

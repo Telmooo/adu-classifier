@@ -33,12 +33,14 @@ class TrieNode:
     """
     parent : Union[TrieNode, None]
     token : str
+    original_token : str
     children : DefaultDict[str, TrieNode]
     level : int
     freq : int
-    def __init__(self, token : str, level : int, parent : Optional[TrieNode] = None) -> None:
+    def __init__(self, token : str, level : int, original_token : Optional[str] = None, parent : Optional[TrieNode] = None) -> None:
         self.parent = parent
         self.token = token
+        self.original_token = original_token if original_token is not None else token
         self.children = defaultdict(lambda: TrieNode("", -1))
         self.level = level
         self.freq = 0
@@ -52,7 +54,7 @@ class TrieNode:
         Returns:
             TrieNode: Node inserted.
         """
-        child = TrieNode(token, self.level + 1, self)
+        child = TrieNode(token, self.level + 1, parent=self)
         self.children[token] = child
         return child
 
@@ -244,4 +246,3 @@ class Trie:
                 to_visit.extend(current.children.values())
 
         return max_node
-
