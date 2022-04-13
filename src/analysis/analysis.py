@@ -136,73 +136,78 @@ stopword_tpu = TPU(
     allow_stopwords=False,
     stopwords=stopwords_set,
     exclude_stopwords=["nao", "nunca", "nem", "jamais", "sim"],
-    use_idf=False
+    use_idf=False,
+    dictionary_path="tpu_dictionary.csv",
+    adu_dictionary_path="adu_dictionary.csv",
+    enable_extra_features=True
 )
 
+#stopword_tpu.generate_adu_dictionary(articles_adu, "tokens")
 
 stopword_tpu.process(articles_adu, "tokens")
 stopword_tpu.save_dictionary()
+stopword_tpu.save_adu_dictionary()
 
 unigrams = stopword_tpu.tfidf_matrix
 features = stopword_tpu.vectorizer.get_feature_names_out()
 
 df = pd.DataFrame.sparse.from_spmatrix(data=unigrams, columns=features)
 
-fig, ax = plt.subplots(figsize=(10, 10))
-visualizer = freqdist(
-    features=features,
-    X=df.loc[:, df.columns != "label"],
-    ax=ax,
-    n=50,
-    orient="h",
-    show=False,
-)
+# fig, ax = plt.subplots(figsize=(10, 10))
+# visualizer = freqdist(
+#     features=features,
+#     X=df.loc[:, df.columns != "label"],
+#     ax=ax,
+#     n=50,
+#     orient="h",
+#     show=False,
+# )
 
-ax.set_title("Frequency Distribution of Top 50 tokens on ADUs")
-ax.set_xlabel("Token count")
+# ax.set_title("Frequency Distribution of Top 50 tokens on ADUs")
+# ax.set_xlabel("Token count")
 
-save_figure(fig, "token_distribution.png", directory=OUT_DIR, format="png", dpi=150)
-plt.clf()
+# save_figure(fig, "token_distribution.png", directory=OUT_DIR, format="png", dpi=150)
+# plt.clf()
 
-write_csv(
-    df.T.sum(axis=1).sort_values(ascending=False).reset_index(),
-    "most_common_tokens.csv",
-    OUT_DIR,
-    header=["Token", "Count"],
-    index=False
-)
+# write_csv(
+#     df.T.sum(axis=1).sort_values(ascending=False).reset_index(),
+#     "most_common_tokens.csv",
+#     OUT_DIR,
+#     header=["Token", "Count"],
+#     index=False
+# )
 
 df["label"] = articles_adu["label"]
-fig, ((ax_fact, ax_policy, _ax), (ax_nvalue, ax_value, ax_pvalue)) = plt.subplots(ncols=3, nrows=2, figsize=(20, 20))
-fig.delaxes(_ax)
+# fig, ((ax_fact, ax_policy, _ax), (ax_nvalue, ax_value, ax_pvalue)) = plt.subplots(ncols=3, nrows=2, figsize=(20, 20))
+# fig.delaxes(_ax)
 
-for label, ax in zip(("Fact", "Policy", "Value(-)", "Value", "Value(+)"), (ax_fact, ax_policy, ax_nvalue, ax_value, ax_pvalue)):
-    X = df.loc[df["label"] == label, df.columns != "label"]
-    visualizer = freqdist(
-        features=features,
-        X=X,
-        ax=ax,
-        n=50,
-        orient="h",
-        show=False,
-    )
-    ax.set_title(f"{label}-ADUs")
-    freq_df = X.T.sum(axis=1).sort_values(ascending=False)
-    dividers = np.array([.25, .5, .75]) * np.max(freq_df)
-    ax.vlines(x=dividers, ymin=0, ymax=1, transform=ax.get_xaxis_transform(), colors="r")
-    write_csv(
-        freq_df.reset_index(),
-        f"{label}_most_common_tokens.csv",
-        OUT_DIR,
-        header=["Token", "Count"],
-        index=False
-    )
+# for label, ax in zip(("Fact", "Policy", "Value(-)", "Value", "Value(+)"), (ax_fact, ax_policy, ax_nvalue, ax_value, ax_pvalue)):
+#     X = df.loc[df["label"] == label, df.columns != "label"]
+#     visualizer = freqdist(
+#         features=features,
+#         X=X,
+#         ax=ax,
+#         n=50,
+#         orient="h",
+#         show=False,
+#     )
+#     ax.set_title(f"{label}-ADUs")
+#     freq_df = X.T.sum(axis=1).sort_values(ascending=False)
+#     dividers = np.array([.25, .5, .75]) * np.max(freq_df)
+#     ax.vlines(x=dividers, ymin=0, ymax=1, transform=ax.get_xaxis_transform(), colors="r")
+#     write_csv(
+#         freq_df.reset_index(),
+#         f"{label}_most_common_tokens.csv",
+#         OUT_DIR,
+#         header=["Token", "Count"],
+#         index=False
+#     )
 
-fig.tight_layout()
-fig.suptitle("Frequency Distribution of Top 50 tokens")
-fig.subplots_adjust(top=0.95)
-save_figure(fig, "class_token_distribution.png", directory=OUT_DIR, format="png", dpi=150)
-plt.clf()
+# fig.tight_layout()
+# fig.suptitle("Frequency Distribution of Top 50 tokens")
+# fig.subplots_adjust(top=0.95)
+# save_figure(fig, "class_token_distribution.png", directory=OUT_DIR, format="png", dpi=150)
+# plt.clf()
 
 """Adjusting dataset
 """
@@ -216,6 +221,12 @@ def get_value_type(label):
 # Negative connotation has value 0, neutral connotation has value 1, positive connotation has value 2
 df["value_type"] = df["label"].apply(get_value_type)
 df.loc[df["label"].str.startswith("Value"), "label"] = "Value"
+# write_csv(
+#     df,
+#     "features.csv",
+#     OUT_DIR,
+#     index=False
+# )
 
 edf = pd.DataFrame(stopword_tpu.efeature_matrix, columns=stopword_tpu.efeatures)
 edf[["label", "value_type"]] = df[["label", "value_type"]]

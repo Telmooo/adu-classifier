@@ -1,4 +1,9 @@
 pt,en
+sim,yes
+não,no
+nunca,never
+nem,nor
+jamais,never
 facto,fact that
 apenas,only
 fruto,fruit
@@ -6798,7 +6803,7 @@ gary,gary
 inspiradora,inspiring
 unificadora,unifying
 trump,trump
-#,
+#,#
 metoo,metoo
 realizado,accomplished
 lady,lady
@@ -8346,7 +8351,7 @@ anunciado,announced
 parceria,partnership
 anunciados,announced
 destinados,destined
-€,
+€,€
 fraunhofer,fraunhofer
 busca,search
 submissão,submission
@@ -8771,7 +8776,7 @@ ideológicos,ideological
 simplificação,simplification
 operar,operate
 constrói-se,it is built
-/,
+/,/
 garante-se,guaranteed
 pluralidade,plurality
 crescido,grown
@@ -10690,7 +10695,7 @@ favorece,favors
 acentua,accentuates
 patente,patent
 norte-americana,North-American
-’,
+’,'
 traduzir-se,translate
 assistência,assistance
 enviados,sent
@@ -13483,7 +13488,7 @@ empobrecidos,impoverished
 fantásticas,fantastic
 plasmar,shape
 ultraperiféricas,outermost
-°,
+°,°
 estiverem,are
 preferir,to prefer
 arquipelágica,archipelagic
@@ -16359,7 +16364,7 @@ referem,refer
 cronológico,chronological
 excerto,excerpt
 sécs,centuries
-.,
+.,.
 agrade,thank
 bancadas,benches
 encomendado,ordered
