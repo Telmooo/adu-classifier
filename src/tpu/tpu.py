@@ -9,6 +9,10 @@ from datetime import datetime
 
 import pandas as pd
 import numpy as np
+from scipy.sparse import (
+    save_npz,
+    spmatrix
+)
 
 from deep_translator import GoogleTranslator
 
@@ -21,10 +25,13 @@ from nltk.tokenize import (
 )
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
+from textblob import TextBlob
+
 from sklearn.feature_extraction.text import (
     TfidfVectorizer,
     CountVectorizer
 )
+import joblib
 
 import spacy
 
@@ -32,9 +39,9 @@ from utils.io import write_csv
 
 class TPU:
     vectorizer: Union[CountVectorizer, TfidfVectorizer]
-    tfidf_matrix: np.ndarray
+    tfidf_matrix: spmatrix
     efeature_matrix: np.ndarray
-    ngram_max: int
+    ngram_range: Tuple[int, int]
     language: str
     allow_stopwords: bool
     stopwords: Set[str]
@@ -51,11 +58,11 @@ class TPU:
     enable_extra_features: bool
     processing_row: int
     total_rows: int
-    def __init__(self, type : Literal['count', 'tfidf'], ngram_max : int = 4,
+    def __init__(self, type : Literal['count', 'tfidf'], ngram_range : Tuple[int, int] = (1, 4),
                 allow_stopwords : bool = False, stopwords : Optional[Set[str]] = None, exclude_stopwords : Optional[Set[str]] = None,
                 dictionary_path : Optional[str] = None, adu_dictionary_path : Optional[str] = None,
                 use_idf : bool = True, enable_extra_features : Optional[bool] = False):
-        self.ngram_max = ngram_max if ngram_max > 0 else -1
+        self.ngram_range = ngram_range
         
         self.allow_stopwords = allow_stopwords
         self.stopwords = set(stopwords) if stopwords is not None else set()
@@ -63,7 +70,7 @@ class TPU:
 
         self.tfidf_matrix = []
         self.efeatures = ["token_len", "n_entities", "unique_entities", "org_entities", "loc_entities", "per_entities", "misc_entities",
-                            "adu_polarity",
+                            "adu_polarity", "token_polarity", "blob_polarity", "blob_subjectivity",
                             "adj_count", "adv_count", "cconj_count", "sconj_count", "noun_count", "det_count", "verb_count",
                             "intj_count", "part_count", "pron_count", "propn_count", "punct_count"
                         ]
@@ -112,7 +119,7 @@ class TPU:
                 input='content',
                 encoding='utf-8',
                 lowercase=True,
-                ngram_range=(1, self.ngram_max),
+                ngram_range=self.ngram_range,
                 tokenizer=self.__tokenize,
                 analyzer='word',
             )
@@ -121,11 +128,11 @@ class TPU:
                 input='content',
                 encoding='utf-8',
                 lowercase=True,
-                ngram_range=(1, self.ngram_max),
+                ngram_range=self.ngram_range,
                 norm='l2',
                 use_idf=use_idf,
                 smooth_idf=True,
-                sublinear_tf=False,
+                sublinear_tf=True,
                 tokenizer=self.__tokenize,
                 analyzer='word',
             )
@@ -145,6 +152,10 @@ class TPU:
         pos, neu, neg = polarity_scores["pos"], polarity_scores["neu"], polarity_scores["neg"]
         amortized_polarity = pos / (1 + neg + neu) - neg / (1 + pos + neu) + neu / (2 - pos) - neu / (2 - neg)
         return (amortized_polarity + polarity_scores["compound"]) / 2.0
+
+    def save_vectorizer(self, vectorizer_path : str, feature_matrix_path : str):
+        joblib.dump(self.vectorizer, vectorizer_path)
+        save_npz(feature_matrix_path, self.tfidf_matrix)
 
     def save_dictionary(self, dictionary_path : Optional[str] = None):
         path = dictionary_path if dictionary_path is not None else self.dictionary_path
@@ -180,7 +191,7 @@ class TPU:
 
     def generate_adu_dictionary(self, df: pd.DataFrame, token_col : str) -> None:
         start_time = datetime.now()
-        print(f"Start of ADU dictionary generation at: {start_time}")
+        print(f"Start of ADU dictionary generation at: {start_time.strftime('%H:%M:%S')}")
 
         self.processing_row = 0
         self.total_rows = df.shape[0]
@@ -191,8 +202,14 @@ class TPU:
 
         self.save_adu_dictionary()
 
+        self.__progress_bar(finished=True)
+
         end_time = datetime.now()
-        print(f"Ended ADU dictionary generation at {end_time}, taking {end_time - start_time}.")
+        seconds = int( (end_time - start_time).total_seconds() )
+        hours, seconds = divmod(seconds, 3600)
+        minutes, seconds = divmod(seconds, 60)
+        seconds, _ = divmod(seconds, 1)
+        print(f"Ended ADU dictionary generation at {end_time.strftime('%H:%M:%S')}, taking {hours}h {minutes}min {seconds}s.")
         print(f"Saved generated dictionary onto \"{os.path.abspath(self.adu_dictionary_path)}\"")
 
 
@@ -222,6 +239,10 @@ class TPU:
             neg_factor = 1 # 1 when neutral, -0.5 when in presence of a negation
 
             token_len = 0
+
+            blob = TextBlob(translated_tokens)
+            blob_polarity = blob.sentiment.polarity
+            blob_subjectivity = blob.sentiment.subjectivity
 
         for token in doc:
             lemma = normalize("NFKD", token.lemma_).encode(encoding="ascii", errors="ignore").decode("utf-8")
@@ -263,8 +284,8 @@ class TPU:
                     neg_factor = 1.0
 
         if self.enable_extra_features:
-            if calculated_polarity is not None:
-                polarity = np.mean([polarity, calculated_polarity])
+            if calculated_polarity is None:
+                calculated_polarity = 0
 
             n_entities = len(doc.ents)
             unique_entities = len(set( [ ent.ent_id for ent in doc.ents ] ))
@@ -275,7 +296,7 @@ class TPU:
             
             efeatures = np.array(
                 [   token_len, n_entities, unique_entities, entity_types["ORG"], entity_types["LOC"], entity_types["PER"], entity_types["MISC"],
-                    polarity,
+                    polarity, calculated_polarity, blob_polarity, blob_subjectivity,
                     pos_tags["ADJ"], pos_tags["ADV"], pos_tags["CCONJ"], pos_tags["SCONJ"], pos_tags["NOUN"], pos_tags["DET"], pos_tags["VERB"],
                     pos_tags["INTJ"], pos_tags["PART"], pos_tags["PRON"], pos_tags["PROPN"], pos_tags["PUNCT"]
                 ])
