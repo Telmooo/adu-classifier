@@ -1,4 +1,7 @@
 out/
+count_*
+tfidf_*
+efeatures.csv
 
 # Editors
 .vscode/

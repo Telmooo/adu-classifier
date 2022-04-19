@@ -3,7 +3,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from yellowbrick.text import freqdist
+from yellowbrick.text import freqdist, tsne
+from yellowbrick.features import PCA
 
 from utils.io import (
     read_excel,
@@ -21,7 +22,6 @@ pd.set_option("display.max_columns", 500)
 
 DATA_DIR = "../data"
 OUT_DIR = "./out"
-GENERATE_CHARTS = False
 
 # Full articles
 articles = read_excel("OpArticles.xlsx", directory=DATA_DIR)
@@ -130,13 +130,13 @@ stopwords_set = [
 """Analysis after removal of relevant stopwords from the previous analysis 
 """
 
-vectorizer_type = "count"
-ngram_type = "4gram"
+vectorizer_type = "tfidf"
+ngram_type = "1-2gram"
 chart_prefix = f"{vectorizer_type}_{ngram_type}"
 
 stopword_tpu = TPU(
     type=vectorizer_type,
-    ngram_range=(4, 4),
+    ngram_range=(1, 4),
     allow_stopwords=False,
     stopwords=stopwords_set,
     exclude_stopwords=["nao", "nunca", "nem", "jamais", "sim"],
@@ -161,6 +161,8 @@ features = stopword_tpu.vectorizer.get_feature_names_out()
 
 df = pd.DataFrame.sparse.from_spmatrix(data=ngrams, columns=features)
 
+df["label"] = articles_adu["label"]
+
 if vectorizer_type == "count":
     fig, ax = plt.subplots(figsize=(25, 25))
     visualizer = freqdist(
@@ -178,7 +180,6 @@ if vectorizer_type == "count":
     save_figure(fig, f"{chart_prefix}_token_distribution.png", directory=OUT_DIR, format="png", dpi=150)
     plt.clf()
 
-    df["label"] = articles_adu["label"]
     fig, ((ax_fact, ax_policy, _ax), (ax_nvalue, ax_value, ax_pvalue)) = plt.subplots(ncols=3, nrows=2, figsize=(20, 20))
     fig.delaxes(_ax)
 
@@ -211,8 +212,8 @@ def get_value_type(label):
     return 1
 
 # Negative connotation has value 0, neutral connotation has value 1, positive connotation has value 2
-df["value_type"] = df["label"].apply(get_value_type)
-df.loc[df["label"].str.startswith("Value"), "label"] = "Value"
+# df["value_type"] = df["label"].apply(get_value_type)
+# df.loc[df["label"].str.startswith("Value"), "label"] = "Value"
 
 # edf = pd.DataFrame(stopword_tpu.efeature_matrix, columns=stopword_tpu.efeatures)
 # edf[["label", "value_type"]] = df[["label", "value_type"]]

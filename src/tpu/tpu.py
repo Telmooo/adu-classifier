@@ -42,7 +42,6 @@ class TPU:
     tfidf_matrix: spmatrix
     efeature_matrix: np.ndarray
     ngram_range: Tuple[int, int]
-    language: str
     allow_stopwords: bool
     stopwords: Set[str]
     exclude_stopwords: Set[str]
